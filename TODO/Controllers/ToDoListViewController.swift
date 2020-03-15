@@ -7,35 +7,22 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
     
     var itemArray = [Item]()
-//    let defaults = UserDefaults.standard
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
-        
-        print(dataFilePath!)
+        print(dataFilePath)
+    
         loadItems()
         
-//        let newItem = Item()
-//        newItem.title = "购买水杯"
-//        itemArray.append(newItem)
-//        let newItem2 = Item()
-//        newItem2.title = "吃药"
-//        itemArray.append(newItem2)
-//        let newItem3 = Item()
-//        newItem3.title = "修改密码"
-//        itemArray.append(newItem3)
-//        for index in 4...120 {
-//            let newItem = Item()
-//            newItem.title = "第\(index)件事务"
-//            itemArray.append(newItem)
-//        }
     }
     
     
@@ -49,15 +36,13 @@ class ToDoListViewController: UITableViewController {
             //用户单击时候执行的代码
             print(textField.text!)
             
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
             self.itemArray.append(newItem)
-            
-//            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
             
             self.saveItems()
             
-            self.tableView.reloadData()
         })
         alert.addTextField(configurationHandler: {alertTextField in
             alertTextField.placeholder = "创建一个新项目..."
@@ -76,7 +61,6 @@ class ToDoListViewController: UITableViewController {
         let item = itemArray[indexPath.row]
         cell.accessoryType = item.done ? .checkmark : .none
         
-//        print("更新第\(indexPath.row)行")
         return cell
     }
     
@@ -89,11 +73,14 @@ class ToDoListViewController: UITableViewController {
         print(itemArray[indexPath.row].title)
         //标志的切换
         let item = itemArray[indexPath.row]
-        if item.done == false {
-            item.done = true
-        }else{
-            item.done = false
-        }
+        item.done = !item.done
+        
+        //改
+//        let title = item.title!
+//        item.setValue(title+"- (已完成)", forKey: "title")
+        //删
+//        context.delete(item)
+//        itemArray.remove(at: indexPath.row)
         
         saveItems()
         
@@ -109,27 +96,52 @@ class ToDoListViewController: UITableViewController {
     //MARK: - Data Save and Load
     
     func saveItems() {
-        let encoder = PropertyListEncoder()
+        
         do {
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+            try context.save()
         }catch{
-            print("编码错误:\(error)")
+            print("保存context错误:\(error)")
         }
+        
+        tableView.reloadData()
     }
     
-    func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath! ) {
-            let decoder = PropertyListDecoder()
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            }catch{
-                print("解码错误：\(error)")
-            }
+    func loadItems(with request : NSFetchRequest<Item> = Item.fetchRequest()) {
+
+        do {
+            itemArray = try context.fetch(request)
+        }catch{
+            print("从context获取数据错误:\(error)")
         }
+        tableView.reloadData()
     }
     
 
 
 }
 
+//MARK: - UISearchBarDelegate
+extension ToDoListViewController : UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        request.predicate = NSPredicate(format: "title CONTAINS[c] %@", searchBar.text!)
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        loadItems(with: request)
+        
+        
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            
+            loadItems()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+         
+        }
+    }
+}
