@@ -9,6 +9,7 @@
 import UIKit
 import RealmSwift
 import SwipeCellKit
+import ChameleonFramework
 
 class CategoryViewController: UITableViewController {
     
@@ -22,12 +23,14 @@ class CategoryViewController: UITableViewController {
         super.viewDidLoad()
         
         tableView.rowHeight = 80.0
+        tableView.separatorStyle = .none
         
         print(dataFilePath)
         
         loadCategories()
     }
 
+    //MARK: - Add Button Pressed
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         
@@ -35,6 +38,7 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "添加", style: .default, handler: {action in
             let newCategory = Category()
             newCategory.name = textField.text!
+            newCategory.colour = UIColor.randomFlat().hexValue()
             self.save(category: newCategory)
         })
         alert.addAction(action)
@@ -57,7 +61,12 @@ class CategoryViewController: UITableViewController {
         cell.delegate = self
 
         cell.textLabel?.text = categories?[indexPath.row].name ?? "没有任何类别"
-
+        //Chameleon Kit
+        if let categoryColour = UIColor(hexString: categories?[indexPath.row].colour ?? "1D9BF6") {
+            cell.backgroundColor = categoryColour
+            cell.textLabel?.textColor = ContrastColorOf(categoryColour, returnFlat: true)
+        }
+        
         return cell
     }
     
@@ -81,7 +90,7 @@ class CategoryViewController: UITableViewController {
     }
    
     
-    // MARK: - 数据维护
+    // MARK: - Data Save And Load
     func save(category:Category) {
         do {
             try realm.write{
@@ -114,6 +123,7 @@ extension CategoryViewController : SwipeTableViewCellDelegate {
             if let categoryForDeletion = self.categories?[indexPath.row] {
                 do {
                     try self.realm.write{
+                        self.realm.delete(categoryForDeletion.items)
                         self.realm.delete(categoryForDeletion)
                     }
                 } catch {
