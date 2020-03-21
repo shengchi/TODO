@@ -7,6 +7,7 @@ target 'TODO' do
 
   # Pods for TODO
   pod 'RealmSwift'
+  pod 'SwipeCellKit'
   
   inhibit_all_warnings!
 
